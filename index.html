@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Kontrol Kalibrasi - PT HSSI</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    
+    <style>
+        .transition-sidebar { transition: width 0.3s ease-in-out, margin-left 0.3s ease-in-out; }
+        .nav-active { background-color: #2563eb; color: white; }
+        .nav-inactive { color: #cbd5e1; }
+        .nav-inactive:hover { background-color: #1e293b; color: white; }
+        #print-area { display: none; }
+        @media print {
+            .no-print { display: none !important; }
+            #print-area { display: block !important; width: 100%; }
+            @page { size: A4; margin: 15mm; }
+            body { background-color: white; color: black; font-family: 'Times New Roman', Times, serif; }
+            .print-table, .print-table th, .print-table td { border: 1px solid #000 !important; border-collapse: collapse; }
+            .print-table th { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; }
+            .print-page { page-break-after: always; break-after: page; padding-bottom: 10mm; }
+            .print-page:last-child { page-break-after: auto; break-after: auto; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 flex min-h-screen overflow-x-hidden">
+
+    <aside id="sidebar" class="bg-slate-900 w-64 min-h-screen flex flex-col transition-sidebar no-print fixed z-20">
+        <div class="h-16 flex items-center justify-between px-4 bg-slate-950 border-b border-slate-800">
+            <span id="logo-text" class="font-bold text-lg text-white tracking-widest whitespace-nowrap overflow-hidden">QC CALIBRATION</span>
+            <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white focus:outline-none">
+                <i class="fas fa-bars text-xl"></i>
+            </button>
+        </div>
+
+        <nav class="flex-1 px-3 py-6 space-y-2">
+            <button onclick="switchView('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-4 px-3 py-3 rounded-lg transition-colors nav-active">
+                <i class="fas fa-chart-pie w-5 text-center"></i>
+                <span class="nav-label whitespace-nowrap font-medium">Dashboard Summary</span>
+            </button>
+            <button onclick="switchView('cek')" id="nav-cek" class="w-full flex items-center gap-4 px-3 py-3 rounded-lg transition-colors nav-inactive text-emerald-400 hover:text-emerald-300">
+                <i class="fas fa-search w-5 text-center"></i>
+                <span class="nav-label whitespace-nowrap font-bold">Cek Identitas Alat</span>
+            </button>
+            <div class="border-t border-slate-700 my-2"></div>
+            <button onclick="switchView('alert')" id="nav-alert" class="w-full flex items-center gap-4 px-3 py-3 rounded-lg transition-colors nav-inactive">
+                <i class="fas fa-exclamation-triangle w-5 text-center text-amber-400"></i>
+                <span class="nav-label whitespace-nowrap font-medium">Alert Minggu Ini</span>
+            </button>
+            <button onclick="switchView('master')" id="nav-master" class="w-full flex items-center gap-4 px-3 py-3 rounded-lg transition-colors nav-inactive">
+                <i class="fas fa-database w-5 text-center"></i>
+                <span class="nav-label whitespace-nowrap font-medium">Master Data Alat</span>
+            </button>
+            <button onclick="switchView('riwayat')" id="nav-riwayat" class="w-full flex items-center gap-4 px-3 py-3 rounded-lg transition-colors nav-inactive">
+                <i class="fas fa-history w-5 text-center"></i>
+                <span class="nav-label whitespace-nowrap font-medium">Riwayat Kalibrasi</span>
+            </button>
+            <button onclick="switchView('update')" id="nav-update" class="w-full flex items-center gap-4 px-3 py-3 rounded-lg transition-colors nav-inactive">
+                <i class="fas fa-qrcode w-5 text-center"></i>
+                <span class="nav-label whitespace-nowrap font-medium">Update Form Aktual</span>
+            </button>
+            <div class="pt-4 mt-4 border-t border-slate-700"></div>
+            <button onclick="switchView('setup')" id="nav-setup" class="w-full flex items-center gap-4 px-3 py-3 rounded-lg transition-colors nav-inactive">
+                <i class="fas fa-cogs w-5 text-center text-slate-400"></i>
+                <span class="nav-label whitespace-nowrap font-medium text-slate-400">Setup Periode <i class="fas fa-lock ml-2 text-xs"></i></span>
+            </button>
+        </nav>
+        
+        <div class="p-4 bg-slate-950 border-t border-slate-800 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold shrink-0">S</div>
+            <div class="nav-label overflow-hidden text-left">
+                <p class="text-sm text-white font-semibold whitespace-nowrap">Sopari</p>
+                <p class="text-xs text-slate-400 whitespace-nowrap">HSSI-0293 | PPC/QC</p>
+            </div>
+        </div>
+    </aside>
+
+    <main id="main-content" class="flex-1 ml-64 transition-sidebar flex flex-col min-h-screen no-print">
+        <header class="h-16 bg-white shadow-sm flex items-center justify-between px-8 z-10 sticky top-0">
+            <h1 id="page-title" class="text-xl font-semibold text-slate-800 border-l-4 border-blue-600 pl-3">Dashboard Status Kalibrasi</h1>
+            <div class="text-sm font-medium text-slate-500 flex items-center gap-2">
+                <i class="far fa-building"></i> PT. Hanwa Steel Service Indonesia
+            </div>
+        </header>
+
+        <div class="p-8 flex-1" id="view-container">
+            </div>
+    </main>
+
+    <div id="print-area"></div>
+
+    <script>
+        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbybsajDlirVMo2m3OrHMHm9eRLy5ArP0KBm2bhchhnXQyHtp-9gslNPH6GNxxUaox0WnA/exec";
+        
+        const MASTER_PINS = ["HSSI0293", "SLOT_PIN_2", "SLOT_PIN_3", "SLOT_PIN_4", "SLOT_PIN_5"];
+        let isSetupUnlocked = false; 
+        let html5QrCode = null; // Variabel global untuk kamera
+        
+        window.currentAlertData = []; window.masterData = []; window.riwayatData = []; window.setupData = [];
+
+        const pageTitles = {
+            dashboard: "Dashboard Status Kalibrasi",
+            cek: "Cek Identitas & Sertifikat Alat",
+            alert: "Alert Jatuh Tempo Minggu Ini",
+            master: "Database Master Alat Ukur",
+            riwayat: "Riwayat Pembaruan Kalibrasi",
+            update: "Update Data Kalibrasi Aktual",
+            setup: "Setup Periode Kalibrasi"
+        };
+
+        // --- HTML TEMPLATES ---
+        const getDashboardHTML = () => `...`; // Sama seperti sebelumnya, di-skip dalam draft internal, tapi akan diisikan komplit di bawah
+        // (Perbaikan: Saya akan mencetak template secara utuh langsung agar Anda bisa copas)
+
+        function getDashboardHTMLFull() {
+            return `
+            <div class="flex justify-between items-center mb-6">
+                <p class="text-slate-500">Ringkasan status alat ukur terdaftar</p>
+                <button onclick="loadDashboardData()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 text-sm font-medium transition-colors">
+                    <i class="fas fa-sync-alt"></i> Refresh Data
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xl shrink-0"><i class="fas fa-tools"></i></div>
+                    <div><p class="text-sm font-medium text-slate-500">Total Alat Ukur</p><p id="stat-total" class="text-2xl font-bold text-slate-800">0</p></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-xl shrink-0"><i class="fas fa-check-circle"></i></div>
+                    <div><p class="text-sm font-medium text-slate-500">Kalibrasi Valid</p><p id="stat-valid" class="text-2xl font-bold text-slate-800">0</p></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-xl shrink-0"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div><p class="text-sm font-medium text-slate-500">Warning / Overdue</p><p id="stat-warning" class="text-2xl font-bold text-slate-800">0</p></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-xl shrink-0"><i class="fas fa-ban"></i></div>
+                    <div><p class="text-sm font-medium text-slate-500">Broken / Scrapped</p><p id="stat-broken" class="text-2xl font-bold text-slate-800">0</p></div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-8">
+                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-list-check text-blue-600"></i> Summary Kuantitas per Nama Alat</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-500 uppercase text-xs border-b">
+                            <tr>
+                                <th class="px-6 py-3 font-semibold">Nama Alat Ukur</th>
+                                <th class="px-6 py-3 font-semibold text-center text-emerald-700 bg-emerald-50/50">Active</th>
+                                <th class="px-6 py-3 font-semibold text-center text-red-700 bg-red-50/50">Broken</th>
+                                <th class="px-6 py-3 font-semibold text-center text-slate-700 bg-slate-100/50">Scrapped</th>
+                                <th class="px-6 py-3 font-semibold text-center bg-slate-100 font-bold text-slate-800">Total Unit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-summary-table-body" class="divide-y divide-slate-100">
+                            <tr><td colspan="5" class="px-6 py-8 text-center text-slate-400 italic"><i class="fas fa-spinner fa-spin mr-2"></i> Mengompilasi...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+        }
+
+        const getCekAlatHTML = () => `
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4"><i class="fas fa-qrcode text-emerald-500 mr-2"></i> Pemindaian Cepat</h2>
+                    <div class="relative flex items-center">
+                        <input type="text" id="cek-no-alat" class="w-full p-4 pl-5 pr-28 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none uppercase font-bold text-lg" placeholder="KETIK ATAU SCAN NOMOR ALAT..." onkeyup="if(event.key==='Enter') actionCekAlat()">
+                        <button onclick="startQrScanner()" class="absolute right-14 text-slate-400 hover:text-emerald-600 p-2 transition-colors group" title="Buka Kamera QR">
+                            <i class="fas fa-camera text-2xl group-hover:scale-110 transition-transform"></i>
+                        </button>
+                        <button onclick="actionCekAlat()" id="btn-cek-search" class="absolute right-3 bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-3"><i class="fas fa-info-circle"></i> Klik ikon kamera untuk memindai QR Code di fisik alat.</p>
+                </div>
+                
+                <div id="qr-reader-container" class="hidden bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 relative overflow-hidden">
+                    <button onclick="stopQrScanner()" class="absolute top-4 right-4 z-10 bg-red-100 text-red-600 px-3 py-1.5 rounded font-bold shadow-sm hover:bg-red-200 transition-colors">
+                        <i class="fas fa-times mr-1"></i> Tutup Kamera
+                    </button>
+                    <div id="qr-reader" class="w-full max-w-lg mx-auto rounded overflow-hidden"></div>
+                </div>
+
+                <div id="cek-result-container">
+                    </div>
+            </div>
+        `;
+
+        const getUpdateFormHTML = () => `
+            <div class="max-w-3xl mx-auto bg-white p-8 rounded-xl border border-slate-200 shadow-sm">
+                <div class="mb-6 pb-4 border-b border-slate-100">
+                    <h2 class="text-lg font-bold text-slate-800"><i class="fas fa-qrcode text-blue-600 mr-2"></i> Input Hasil Kalibrasi Aktual</h2>
+                    <p class="text-sm text-slate-500 mt-1">Formulir digital untuk memperbarui riwayat pengecekan fisik. Berkas akan langsung disimpan ke folder GDrive internal.</p>
+                </div>
+                <form id="form-update" onsubmit="submitUpdateForm(event)" class="space-y-5">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Nomor Alat <span class="text-red-500">*</span></label>
+                            <input type="text" id="input-no-alat" required placeholder="Contoh: HSSI-CAL-021" class="w-full p-2.5 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none uppercase transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Tanggal Pelaksanaan Aktual <span class="text-red-500">*</span></label>
+                            <input type="date" id="input-tgl-aktual" required class="w-full p-2.5 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Judgement Hasil <span class="text-red-500">*</span></label>
+                            <select id="input-judgement" required class="w-full p-2.5 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white">
+                                <option value="" disabled selected>Pilih Hasil Pengecekan</option>
+                                <option value="OK">OK (Sesuai Standar)</option>
+                                <option value="Perlu Adjust">Perlu Adjust (Dikalibrasi Ulang)</option>
+                                <option value="NG">NG (Tidak Lolos / Broken)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">PIC / Kalibrator <span class="text-red-500">*</span></label>
+                            <input type="text" id="input-pic" required placeholder="Nama personil lapangan" class="w-full p-2.5 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Upload Berkas Pendukung PDF <span class="text-sm font-normal text-slate-400">(Opsional, Maks 3MB)</span></label>
+                        <input type="file" id="input-file-pdf" accept="application/pdf" class="w-full p-2 border border-slate-300 rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="pt-4 border-t border-slate-100 flex justify-end gap-3">
+                        <button type="submit" id="btn-submit" class="px-5 py-2.5 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium flex items-center gap-2 shadow-sm transition-colors">
+                            <i class="fas fa-cloud-upload-alt"></i> Kirim & Sinkronisasi
+                        </button>
+                    </div>
+                </form>
+                <div id="update-alert" class="mt-4 hidden p-4 rounded text-sm font-medium"></div>
+            </div>
+        `;
+
+        const getSetupHTML = () => `
+            <div id="setup-pin-container" class="max-w-md mx-auto bg-white p-8 rounded-xl border border-slate-200 shadow-sm text-center mt-10">
+                <div class="w-16 h-16 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fas fa-shield-alt"></i></div>
+                <h2 class="text-xl font-bold text-slate-800 mb-2">Akses Terbatas</h2>
+                <p class="text-sm text-slate-500 mb-6">Hanya Supervisor/Admin yang berwenang. Masukkan Master PIN untuk mengubah standar interval.</p>
+                <input type="password" id="input-pin" class="w-full p-3 bg-slate-50 border border-slate-300 rounded text-center tracking-[0.5em] focus:ring-2 focus:ring-blue-500 outline-none mb-4 text-lg font-bold" placeholder="••••••••" onkeyup="if(event.key === 'Enter') verifyPin()">
+                <button onclick="verifyPin()" class="w-full px-5 py-3 bg-slate-800 text-white rounded hover:bg-slate-700 font-bold transition-colors">Buka Akses</button>
+                <p id="pin-error" class="text-red-500 text-sm mt-3 font-medium hidden"><i class="fas fa-exclamation-circle mr-1"></i> Otorisasi Gagal. PIN tidak terdaftar.</p>
+            </div>
+
+            <div id="setup-content-container" class="hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-fit">
+                        <h3 class="font-bold text-slate-800 mb-4 border-b pb-2"><i class="fas fa-edit text-blue-600 mr-2"></i> Tambah / Update Aturan</h3>
+                        <form onsubmit="submitSetupForm(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Kategori / Nama Alat <span class="text-red-500">*</span></label>
+                                <input type="text" id="setup-nama-alat" required placeholder="Contoh: CALIPER 150MM" class="w-full p-2 border border-slate-300 rounded uppercase focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Periode Kalibrasi (Bulan) <span class="text-red-500">*</span></label>
+                                <input type="number" id="setup-periode" required min="1" max="60" placeholder="Contoh: 6" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <button type="submit" id="btn-setup-submit" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition-colors">Simpan Aturan</button>
+                        </form>
+                        <div id="setup-alert" class="mt-4 hidden p-3 rounded text-sm font-medium"></div>
+                    </div>
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-800"><i class="fas fa-database text-slate-500 mr-2"></i> Database Interval Baku</h3>
+                            <button onclick="loadSetupData()" class="text-blue-600 hover:text-blue-800 text-sm font-medium"><i class="fas fa-sync-alt mr-1"></i> Refresh</button>
+                        </div>
+                        <div class="overflow-y-auto" style="max-height: 60vh;">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-white text-slate-500 uppercase text-xs border-b sticky top-0">
+                                    <tr>
+                                        <th class="px-6 py-3 font-semibold">Nama Kategori Alat</th>
+                                        <th class="px-6 py-3 font-semibold text-center">Periode Standard</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="setup-table-body" class="divide-y divide-slate-100">
+                                    <tr><td colspan="2" class="px-6 py-8 text-center text-slate-400 italic"><i class="fas fa-spinner fa-spin mr-2"></i> Memuat ruleset...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('main-content');
+            const navLabels = document.querySelectorAll('.nav-label');
+            const logoText = document.getElementById('logo-text');
+            
+            if (sidebar.classList.contains('w-64')) {
+                sidebar.classList.replace('w-64', 'w-20');
+                mainContent.classList.replace('ml-64', 'ml-20');
+                logoText.classList.add('hidden');
+                navLabels.forEach(label => label.classList.add('hidden'));
+            } else {
+                sidebar.classList.replace('w-20', 'w-64');
+                mainContent.classList.replace('ml-20', 'ml-64');
+                logoText.classList.remove('hidden');
+                setTimeout(() => { navLabels.forEach(label => label.classList.remove('hidden')); }, 150);
+            }
+        }
+
+        function switchView(viewName) {
+            // Matikan kamera secara paksa jika sedang menyala dan berpindah tab
+            stopQrScanner();
+
+            document.querySelectorAll('nav button').forEach(btn => {
+                btn.classList.remove('nav-active');
+                btn.classList.add('nav-inactive');
+            });
+            document.getElementById(`nav-${viewName}`).classList.add('nav-active');
+            document.getElementById(`nav-${viewName}`).classList.remove('nav-inactive');
+            document.getElementById('page-title').innerText = pageTitles[viewName];
+
+            if (viewName === 'dashboard') {
+                document.getElementById('view-container').innerHTML = getDashboardHTMLFull(); loadDashboardData();
+            } else if (viewName === 'cek') {
+                document.getElementById('view-container').innerHTML = getCekAlatHTML();
+                setTimeout(() => document.getElementById('cek-no-alat').focus(), 100);
+            } else if (viewName === 'alert') {
+                loadAlertData();
+            } else if (viewName === 'master') {
+                loadMasterData();
+            } else if (viewName === 'riwayat') {
+                loadRiwayatData();
+            } else if (viewName === 'update') {
+                document.getElementById('view-container').innerHTML = getUpdateFormHTML();
+            } else if (viewName === 'setup') {
+                document.getElementById('view-container').innerHTML = getSetupHTML();
+                if(isSetupUnlocked) {
+                    document.getElementById("setup-pin-container").classList.add("hidden");
+                    document.getElementById("setup-content-container").classList.remove("hidden");
+                    loadSetupData();
+                }
+            }
+        }
+
+        // ================= FITUR QR SCANNER & CEK ALAT ================= //
+
+        function startQrScanner() {
+            document.getElementById('qr-reader-container').classList.remove('hidden');
+            document.getElementById('cek-result-container').innerHTML = ''; // Clear result
+            
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("qr-reader");
+            }
+            
+            html5QrCode.start(
+                { facingMode: "environment" }, // Pakai kamera belakang
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText, decodedResult) => {
+                    // Berhasil scan
+                    document.getElementById('cek-no-alat').value = decodedText;
+                    stopQrScanner();
+                    actionCekAlat(); // Eksekusi pencarian otomatis
+                },
+                (errorMessage) => {
+                    // Abaikan error frame (wajar saat kamera mencari QR)
+                }
+            ).catch((err) => {
+                alert("Gagal mengakses kamera piranti: " + err);
+                document.getElementById('qr-reader-container').classList.add('hidden');
+            });
+        }
+
+        function stopQrScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                }).catch(err => console.log("Stop failed:", err));
+            }
+            let container = document.getElementById('qr-reader-container');
+            if(container) container.classList.add('hidden');
+        }
+
+        async function actionCekAlat() {
+            let inputId = document.getElementById('cek-no-alat').value.trim();
+            let resultBox = document.getElementById('cek-result-container');
+            let btnSearch = document.getElementById('btn-cek-search');
+
+            if(inputId === "") return;
+
+            btnSearch.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
+            resultBox.innerHTML = `
+                <div class="bg-white p-8 rounded-xl border border-slate-200 text-center animate-pulse">
+                    <i class="fas fa-satellite-dish text-4xl text-blue-300 mb-4"></i>
+                    <p class="text-slate-500 font-medium">Mencari identitas alat di database...</p>
+                </div>
+            `;
+
+            try {
+                let response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: "getDetailAlat", payload: inputId }) 
+                });
+                let result = await response.json();
+
+                if (result.status === "success") {
+                    let d = result.data;
+                    
+                    let statusColor = "bg-slate-100 text-slate-700";
+                    if(d.status === "Active") statusColor = "bg-emerald-100 text-emerald-700";
+                    if(d.status === "Broken") statusColor = "bg-red-100 text-red-700";
+
+                    let certHTML = "";
+                    if (d.linkDokumen) {
+                        certHTML = `
+                            <div class="mt-6 pt-6 border-t border-slate-200">
+                                <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Dokumen Sertifikat Terakhir</h4>
+                                <a href="${d.linkDokumen}" target="_blank" class="w-full block text-center py-4 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold rounded-lg transition-colors shadow-sm">
+                                    <i class="fas fa-file-pdf text-xl mr-2"></i> Lihat / Unduh Sertifikat
+                                </a>
+                            </div>`;
+                    } else {
+                        certHTML = `
+                            <div class="mt-6 pt-6 border-t border-slate-200">
+                                <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Dokumen Sertifikat Terakhir</h4>
+                                <div class="w-full text-center py-4 bg-slate-50 border border-slate-200 text-slate-400 font-medium rounded-lg">
+                                    <i class="fas fa-folder-open text-xl mr-2"></i> Belum Ada Berkas Digital Tersimpan
+                                </div>
+                            </div>`;
+                    }
+
+                    resultBox.innerHTML = `
+                        <div class="bg-white p-8 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 px-4 py-2 ${statusColor} font-bold rounded-bl-xl text-sm shadow-sm">
+                                STATUS: ${d.status}
+                            </div>
+                            
+                            <div class="flex items-start gap-4 mb-6">
+                                <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-3xl shrink-0 border border-blue-100">
+                                    <i class="fas fa-wrench"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-2xl font-bold text-slate-800 uppercase">${d.namaAlat}</h3>
+                                    <p class="text-lg font-mono text-blue-600 font-bold">${d.noAlat}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
+                                <div class="pb-2 border-b border-slate-50"><span class="text-slate-400 block text-xs">Maker / Produsen</span><span class="font-bold text-slate-700">${d.maker || '-'}</span></div>
+                                <div class="pb-2 border-b border-slate-50"><span class="text-slate-400 block text-xs">Serial Number (SN)</span><span class="font-bold text-slate-700">${d.sn || '-'}</span></div>
+                                <div class="pb-2 border-b border-slate-50"><span class="text-slate-400 block text-xs">Lokasi Penempatan</span><span class="font-bold text-slate-700">${d.lokasi || '-'}</span></div>
+                                <div class="pb-2 border-b border-slate-50"><span class="text-slate-400 block text-xs">Metode / Range</span><span class="font-bold text-slate-700">${d.metode || '-'}</span></div>
+                                <div class="pb-2 border-b border-slate-50"><span class="text-slate-400 block text-xs">Tanggal Kalibrasi Terakhir</span><span class="font-bold text-slate-700">${d.tglKalibrasi || '-'}</span></div>
+                                <div class="pb-2 border-b border-slate-50"><span class="text-slate-400 block text-xs">Tanggal Jatuh Tempo (Next)</span><span class="font-bold text-blue-600">${d.tglNext || '-'}</span></div>
+                            </div>
+                            
+                            ${certHTML}
+                        </div>
+                    `;
+                } else {
+                    resultBox.innerHTML = `
+                        <div class="bg-red-50 p-6 rounded-xl border border-red-200 text-center">
+                            <i class="fas fa-box-open text-4xl text-red-300 mb-3"></i>
+                            <h3 class="font-bold text-red-800 text-lg">Pencarian Gagal</h3>
+                            <p class="text-red-600 mt-1">${result.message}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultBox.innerHTML = `<div class="bg-amber-50 p-4 rounded-lg border border-amber-200 text-amber-800 text-center"><i class="fas fa-wifi mr-2"></i>Koneksi server terputus.</div>`;
+            }
+            btnSearch.innerHTML = `<i class="fas fa-search"></i>`;
+        }
+
+
+        // ================= OTENTIKASI PIN ================= //
+        function verifyPin() {
+            let pinInput = document.getElementById("input-pin").value.trim();
+            let errText = document.getElementById("pin-error");
+            
+            if(MASTER_PINS.includes(pinInput)) {
+                isSetupUnlocked = true;
+                document.getElementById("setup-pin-container").classList.add("hidden");
+                document.getElementById("setup-content-container").classList.remove("hidden");
+                loadSetupData();
+            } else {
+                errText.classList.remove("hidden");
+            }
+        }
+
+        // ================= FETCH API: DASHBOARD, ALERT, DLL ================= //
+        async function loadDashboardData() {
+            const elTotal = document.getElementById('stat-total');
+            const elTableBody = document.getElementById('dashboard-summary-table-body');
+            if(!elTotal) return; 
+            ['stat-total', 'stat-valid', 'stat-warning', 'stat-broken'].forEach(id => {
+                document.getElementById(id).innerHTML = '<i class="fas fa-spinner fa-spin text-slate-300"></i>';
+            });
+            try {
+                let response = await fetch(GAS_WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getDashboard" }) });
+                let result = await response.json();
+                if (result.status === "success") {
+                    document.getElementById('stat-total').innerText = result.data.total;
+                    document.getElementById('stat-valid').innerText = result.data.valid;
+                    document.getElementById('stat-warning').innerText = result.data.warning + result.data.overdue;
+                    document.getElementById('stat-broken').innerText = result.data.broken;
+                    
+                    if (elTableBody && result.data.toolSummary) {
+                        let tableRowsHTML = "";
+                        if(result.data.toolSummary.length === 0) {
+                            tableRowsHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-slate-400 italic">Database kosong.</td></tr>`;
+                        } else {
+                            result.data.toolSummary.forEach(row => {
+                                tableRowsHTML += `
+                                    <tr class="hover:bg-slate-50 transition-colors">
+                                        <td class="px-6 py-3.5 font-semibold text-slate-800">${row.namaAlat}</td>
+                                        <td class="px-6 py-3.5 text-center font-medium ${row.active > 0 ? 'text-emerald-600 bg-emerald-50/20' : 'text-slate-300'}">${row.active}</td>
+                                        <td class="px-6 py-3.5 text-center font-medium ${row.broken > 0 ? 'text-red-500 bg-red-50/20' : 'text-slate-300'}">${row.broken}</td>
+                                        <td class="px-6 py-3.5 text-center font-medium ${row.scrapped > 0 ? 'text-slate-600 bg-slate-50' : 'text-slate-300'}">${row.scrapped}</td>
+                                        <td class="px-6 py-3.5 text-center bg-slate-50 font-bold text-slate-900">${row.total}</td>
+                                    </tr>`;
+                            });
+                        }
+                        elTableBody.innerHTML = tableRowsHTML;
+                    }
+                }
+            } catch (error) { console.error("Koneksi gagal:", error); }
+        }
+
+        async function loadAlertData() {
+            const container = document.getElementById('view-container');
+            container.innerHTML = `<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center"><i class="fas fa-spinner fa-spin text-3xl text-blue-500 mb-4"></i><p class="text-slate-500">Menganalisis jadwal jatuh tempo...</p></div>`;
+            try {
+                let response = await fetch(GAS_WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getAlertData" }) });
+                let result = await response.json();
+                if (result.status === "success") {
+                    window.currentAlertData = result.data; renderAlertTable(result.data, container);
+                }
+            } catch (error) { console.error(error); }
+        }
+
+        async function loadMasterData() {
+            const container = document.getElementById('view-container');
+            container.innerHTML = `<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center"><i class="fas fa-spinner fa-spin text-3xl text-blue-500 mb-4"></i><p class="text-slate-500">Memuat seluruh Master Data alat ukur...</p></div>`;
+            try {
+                let response = await fetch(GAS_WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getMasterData" }) });
+                let result = await response.json();
+                if (result.status === "success") {
+                    window.masterData = result.data; renderMasterTable(result.data, container);
+                }
+            } catch (error) { console.error(error); }
+        }
+
+        async function loadRiwayatData() {
+            const container = document.getElementById('view-container');
+            container.innerHTML = `<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center"><i class="fas fa-spinner fa-spin text-3xl text-blue-500 mb-4"></i><p class="text-slate-500">Memuat catatan riwayat kalibrasi dari server...</p></div>`;
+            try {
+                let response = await fetch(GAS_WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getRiwayatData" }) });
+                let result = await response.json();
+                if (result.status === "success") {
+                    window.riwayatData = result.data; renderRiwayatTable(result.data, container);
+                }
+            } catch (error) { console.error(error); }
+        }
+
+        async function loadSetupData() {
+            const tableBody = document.getElementById('setup-table-body');
+            tableBody.innerHTML = `<tr><td colspan="2" class="px-6 py-8 text-center text-slate-400 italic"><i class="fas fa-spinner fa-spin mr-2"></i> Mengambil aturan...</td></tr>`;
+            try {
+                let response = await fetch(GAS_WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getSetupData" }) });
+                let result = await response.json();
+                if (result.status === "success") {
+                    window.setupData = result.data;
+                    let html = "";
+                    if(result.data.length === 0){
+                        html = `<tr><td colspan="2" class="px-6 py-4 text-center text-slate-400 italic">Belum ada aturan periode tersimpan.</td></tr>`;
+                    } else {
+                        result.data.forEach(item => {
+                            html += `<tr class="hover:bg-slate-50 border-b border-slate-50"><td class="px-6 py-3 font-bold text-slate-800">${item.namaAlat}</td><td class="px-6 py-3 text-center"><span class="bg-blue-50 text-blue-700 px-3 py-1 rounded font-bold">${item.periode} Bulan</span></td></tr>`;
+                        });
+                    }
+                    tableBody.innerHTML = html;
+                }
+            } catch (error) { console.error(error); }
+        }
+
+        async function submitSetupForm(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-setup-submit');
+            const alertBox = document.getElementById('setup-alert');
+            btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Menyimpan...`;
+            alertBox.classList.add("hidden");
+            
+            const payload = {
+                namaAlat: document.getElementById('setup-nama-alat').value.trim(),
+                periode: document.getElementById('setup-periode').value
+            };
+
+            try {
+                let response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: "updateSetupData", payload: payload }) 
+                });
+                let result = await response.json();
+                alertBox.classList.remove("hidden");
+                if(result.status === "success") {
+                    alertBox.className = "mt-4 p-3 rounded text-sm font-medium bg-emerald-100 text-emerald-800 border border-emerald-200";
+                    alertBox.innerHTML = `<i class="fas fa-check-circle mr-2"></i> Tersimpan!`;
+                    document.getElementById('setup-nama-alat').value = ""; document.getElementById('setup-periode').value = "";
+                    loadSetupData();
+                } else {
+                    alertBox.className = "mt-4 p-3 rounded text-sm font-medium bg-red-100 text-red-800 border border-red-200";
+                    alertBox.innerHTML = `Error: ` + result.message;
+                }
+            } catch (error) {
+                alertBox.classList.remove("hidden");
+                alertBox.className = "mt-4 p-3 rounded text-sm font-medium bg-red-100 text-red-800 border border-red-200";
+                alertBox.innerHTML = `Koneksi Terputus.`;
+            }
+            btn.disabled = false; btn.innerHTML = `Simpan Aturan`;
+        }
+
+        const readPdfAsBase64 = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        };
+
+        async function submitUpdateForm(e) {
+            e.preventDefault(); 
+            const btnSubmit = document.getElementById('btn-submit');
+            const alertBox = document.getElementById('update-alert');
+            const fileInput = document.getElementById('input-file-pdf');
+            btnSubmit.disabled = true; btnSubmit.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Mengunggah & Memproses...`;
+            alertBox.classList.add('hidden');
+
+            try {
+                let fileDataBase64 = null; let fileNameText = "";
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    if (file.size > 3 * 1024 * 1024) throw new Error("Ukuran file PDF maksimal 3 MB.");
+                    if (file.type !== "application/pdf") throw new Error("Ekstensi file wajib PDF.");
+                    fileDataBase64 = await readPdfAsBase64(file); fileNameText = file.name;
+                }
+
+                const payload = {
+                    nomorAlat: document.getElementById('input-no-alat').value.trim().toUpperCase(),
+                    tglEksekusi: document.getElementById('input-tgl-aktual').value,
+                    judgement: document.getElementById('input-judgement').value,
+                    picKalibrasi: document.getElementById('input-pic').value,
+                    fileData: fileDataBase64, fileName: fileNameText
+                };
+
+                let response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST', body: JSON.stringify({ action: "updateKalibrasi", payload: payload }) 
+                });
+                let textResult = await response.text();
+                let result;
+                try { result = JSON.parse(textResult); } catch (jsonError) { throw new Error("HTML Error/Izin."); }
+
+                alertBox.classList.remove('hidden');
+                if (result.status === "success") {
+                    alertBox.className = "mt-4 p-4 rounded text-sm font-medium bg-emerald-100 text-emerald-800 border border-emerald-200";
+                    alertBox.innerHTML = `<i class="fas fa-check-circle mr-2"></i> ${result.message}`;
+                    document.getElementById('form-update').reset(); 
+                } else {
+                    alertBox.className = "mt-4 p-4 rounded text-sm font-medium bg-red-100 text-red-800 border border-red-200";
+                    alertBox.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i> Gagal: ${result.message}`;
+                }
+            } catch (error) {
+                alertBox.classList.remove('hidden');
+                alertBox.className = "mt-4 p-4 rounded text-sm font-medium bg-red-100 text-red-800 border border-red-200";
+                alertBox.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> Aplikasi Error: ${error.message}`;
+            }
+            btnSubmit.disabled = false; btnSubmit.innerHTML = `<i class="fas fa-cloud-upload-alt"></i> Kirim & Sinkronisasi`;
+        }
+
+        // ================= RENDERING TABEL UI ================= //
+        function renderAlertTable(alerts, container) {
+            let tableHTML = `
+                <div class="flex justify-between items-center mb-6">
+                    <p class="text-slate-500">Alat ukur yang mendekati atau melewati jatuh tempo (H-30)</p>
+                    <div class="flex gap-3">
+                        <span class="bg-red-100 text-red-700 font-bold px-3 py-1.5 rounded text-sm flex items-center">${alerts.length} Perlu Tindakan</span>
+                        <button onclick="printBulkAlertForms()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded shadow-sm text-sm font-medium transition-colors flex items-center gap-2" ${alerts.length === 0 ? 'disabled' : ''}>
+                            <i class="fas fa-print"></i> Cetak Semua Form
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50 text-slate-500 uppercase text-xs border-b">
+                                <tr>
+                                    <th class="px-6 py-3 font-medium">Nomor Alat</th><th class="px-6 py-3 font-medium">Nama Alat</th>
+                                    <th class="px-6 py-3 font-medium">Lokasi</th><th class="px-6 py-3 font-medium">Jatuh Tempo</th>
+                                    <th class="px-6 py-3 font-medium text-center">Status</th><th class="px-6 py-3 font-medium text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">`;
+            if (alerts.length === 0) { tableHTML += `<tr><td colspan="6" class="px-6 py-8 text-center text-slate-500 italic">Target Zero Defect tercapai.</td></tr>`; } 
+            else {
+                alerts.forEach((item, index) => {
+                    let badgeClass = item.statusBadge === "Overdue" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700";
+                    tableHTML += `<tr class="hover:bg-slate-50">
+                        <td class="px-6 py-4 font-bold text-slate-800">${item.noAlat}</td><td class="px-6 py-4">${item.namaAlat}</td>
+                        <td class="px-6 py-4">${item.lokasi}</td><td class="px-6 py-4 font-medium">${item.tglNext}</td>
+                        <td class="px-6 py-4 text-center"><span class="px-2 py-1 ${badgeClass} rounded text-xs font-bold">${item.statusBadge}</span></td>
+                        <td class="px-6 py-4 text-center"><button onclick="printSingleAlertForm(${index})" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded text-xs"><i class="fas fa-print mr-1"></i> Form</button></td>
+                    </tr>`;
+                });
+            }
+            container.innerHTML = tableHTML + `</tbody></table></div></div>`;
+        }
+
+        function renderMasterTable(dataList, container) {
+            let tableHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <p class="text-slate-500 text-sm">Menampilkan ${dataList.length} total aset alat ukur terdaftar.</p>
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-2.5 text-slate-400"></i>
+                        <input type="text" id="search-master" onkeyup="filterMasterData()" placeholder="Cari No. Alat atau Nama..." class="pl-9 pr-4 py-2 border border-slate-300 rounded text-sm w-72 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="overflow-x-auto" style="max-height: 72vh;">
+                        <table class="w-full text-sm text-left whitespace-nowrap" id="table-master">
+                            <thead class="bg-slate-50 text-slate-500 uppercase text-xs border-b sticky top-0 shadow-sm z-10">
+                                <tr>
+                                    <th class="px-4 py-3 font-medium">No Alat</th><th class="px-4 py-3 font-medium">Nama Alat</th>
+                                    <th class="px-4 py-3 font-medium">Maker</th><th class="px-4 py-3 font-medium">S/N</th>
+                                    <th class="px-4 py-3 font-medium">Lokasi</th><th class="px-4 py-3 font-medium text-center">Metode</th>
+                                    <th class="px-4 py-3 font-medium text-center">Periode</th><th class="px-4 py-3 font-medium">Tgl Kalibrasi</th>
+                                    <th class="px-4 py-3 font-medium">Tgl Next</th><th class="px-4 py-3 font-medium text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">`;
+            dataList.forEach((item) => {
+                let sBadge = "";
+                if(item.status === "Active") sBadge = `<span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold">Active</span>`;
+                else if(item.status === "Broken") sBadge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-bold">Broken</span>`;
+                else sBadge = `<span class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-bold">${item.status}</span>`;
+                tableHTML += `<tr class="hover:bg-slate-50 transition-colors data-row">
+                    <td class="px-4 py-3 font-bold text-slate-800">${item.noAlat}</td><td class="px-4 py-3">${item.namaAlat}</td>
+                    <td class="px-4 py-3">${item.maker}</td><td class="px-4 py-3">${item.sn}</td><td class="px-4 py-3">${item.lokasi}</td>
+                    <td class="px-4 py-3 text-center">${item.metode}</td><td class="px-4 py-3 text-center">${item.periode} Bln</td>
+                    <td class="px-4 py-3">${item.tglKalibrasi || '-'}</td><td class="px-4 py-3 font-medium text-slate-700">${item.tglNext || '-'}</td>
+                    <td class="px-4 py-3 text-center">${sBadge}</td></tr>`;
+            });
+            container.innerHTML = tableHTML + `</tbody></table></div></div>`;
+        }
+
+        function filterMasterData() {
+            let input = document.getElementById("search-master").value.toUpperCase();
+            let rows = document.querySelectorAll("#table-master tbody .data-row");
+            rows.forEach(row => {
+                row.style.display = (row.innerText.toUpperCase().indexOf(input) > -1) ? "" : "none";
+            });
+        }
+
+        function renderRiwayatTable(dataList, container) {
+            let tableHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <p class="text-slate-500 text-sm">Menampilkan ${dataList.length} rekam jejak aktivitas kalibrasi.</p>
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-2.5 text-slate-400"></i>
+                        <input type="text" id="search-riwayat" onkeyup="filterRiwayatData()" placeholder="Cari No. Alat, ID..." class="pl-9 pr-4 py-2 border border-slate-300 rounded text-sm w-72 outline-none">
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="overflow-x-auto" style="max-height: 72vh;">
+                        <table class="w-full text-sm text-left whitespace-nowrap" id="table-riwayat">
+                            <thead class="bg-slate-50 text-slate-500 uppercase text-xs border-b sticky top-0 shadow-sm z-10">
+                                <tr>
+                                    <th class="px-4 py-3 font-medium">ID Transaksi</th><th class="px-4 py-3 font-medium">No Alat</th>
+                                    <th class="px-4 py-3 font-medium">Tgl Eksekusi</th><th class="px-4 py-3 font-medium text-center">Judgement</th>
+                                    <th class="px-4 py-3 font-medium">PIC Kalibrasi</th><th class="px-4 py-3 font-medium">Admin / Log</th>
+                                    <th class="px-4 py-3 font-medium text-center">Link Dokumen</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">`;
+            dataList.forEach((item) => {
+                let badge = "";
+                if(item.judgement.toUpperCase() === "OK") badge = `<span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold">OK</span>`;
+                else if(item.judgement.toUpperCase() === "NG") badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-bold">NG</span>`;
+                else badge = `<span class="px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs font-bold">${item.judgement}</span>`;
+                let linkDoc = (item.linkDokumen && item.linkDokumen.startsWith("http")) ? `<a href="${item.linkDokumen}" target="_blank" class="text-blue-600 hover:text-blue-800 font-medium"><i class="fas fa-file-pdf"></i> Buka</a>` : `<span class="text-slate-400">-</span>`;
+                tableHTML += `<tr class="hover:bg-slate-50 transition-colors data-row-riwayat">
+                    <td class="px-4 py-3 font-mono text-xs text-slate-500">${item.idTransaksi}</td><td class="px-4 py-3 font-bold text-slate-800">${item.nomorAlat}</td>
+                    <td class="px-4 py-3">${item.tglEksekusi}</td><td class="px-4 py-3 text-center">${badge}</td><td class="px-4 py-3">${item.pic}</td>
+                    <td class="px-4 py-3 text-xs text-slate-500">${item.admin}</td><td class="px-4 py-3 text-center">${linkDoc}</td></tr>`;
+            });
+            container.innerHTML = tableHTML + `</tbody></table></div></div>`;
+        }
+
+        function filterRiwayatData() {
+            let input = document.getElementById("search-riwayat").value.toUpperCase();
+            let rows = document.querySelectorAll("#table-riwayat tbody .data-row-riwayat");
+            rows.forEach(row => { row.style.display = (row.innerText.toUpperCase().indexOf(input) > -1) ? "" : "none"; });
+        }
+
+        function generateFormTemplate(data) {
+            return `
+            <div class="print-page">
+                <div class="border-b-2 border-black pb-4 mb-6 flex justify-between items-end">
+                    <div>
+                        <h1 class="text-xl font-bold uppercase tracking-wide m-0">PT. Hanwa Steel Service Indonesia</h1>
+                        <h2 class="text-base font-semibold text-gray-700 m-0 mt-1">Quality Control Department</h2>
+                    </div>
+                    <div class="text-right text-xs"><p>No. Dokumen: HSSI-FRM-QC-08</p><p>Revisi: 01</p></div>
+                </div>
+                <h3 class="text-center text-lg font-bold underline mb-8 uppercase">Formulir Kalibrasi / Verifikasi Alat Ukur</h3>
+                <table class="w-full text-sm mb-8">
+                    <tr><td class="w-1/6 font-semibold py-1">Nomor Alat</td><td class="w-1/3 py-1">: <span class="font-bold text-base">${data.noAlat || '-'}</span></td><td class="w-1/6 font-semibold py-1">Lokasi</td><td class="w-1/3 py-1">: <span>${data.lokasi || '-'}</span></td></tr>
+                    <tr><td class="font-semibold py-1">Nama Alat</td><td class="py-1">: <span>${data.namaAlat || '-'}</span></td><td class="font-semibold py-1">Metode</td><td class="py-1">: <span>${data.metode || '-'}</span></td></tr>
+                    <tr><td class="font-semibold py-1">Maker / SN</td><td class="py-1">: <span>${data.maker || '-'}</span></td><td class="font-semibold py-1">Periode</td><td class="py-1">: <span>${data.periode ? data.periode + ' Bulan' : '-'}</span></td></tr>
+                </table>
+                <table class="w-full print-table text-sm text-center mb-8">
+                    <thead><tr><th rowspan="2" class="p-2 w-12">No</th><th rowspan="2" class="p-2">Poin Pengecekan (Item Check)</th><th rowspan="2" class="p-2">Standar / Toleransi</th><th colspan="3" class="p-2">Hasil Aktual</th><th rowspan="2" class="p-2">Judgement<br>(OK/NG)</th></tr>
+                    <tr><th class="p-1 w-16">1</th><th class="p-1 w-16">2</th><th class="p-1 w-16">3</th></tr></thead>
+                    <tbody><tr class="h-10"><td>1</td><td class="text-left px-2">Kondisi Fisik & Slider</td><td class="text-left px-2">Mulus, tidak seret</td><td></td><td></td><td></td><td></td></tr>
+                    <tr class="h-10"><td>2</td><td class="text-left px-2">Titik Nol (Zero Point)</td><td class="text-left px-2">Akurat di 0.00 mm</td><td></td><td></td><td></td><td></td></tr>
+                    <tr class="h-10"><td>3</td><td class="text-left px-2">Akurasi Pengukuran Blok 10mm</td><td class="text-left px-2">± 0.02 mm</td><td></td><td></td><td></td><td></td></tr>
+                    <tr class="h-10"><td>4</td><td class="text-left px-2">Akurasi Pengukuran Blok 50mm</td><td class="text-left px-2">± 0.02 mm</td><td></td><td></td><td></td><td></td></tr>
+                    <tr class="h-10"><td>5</td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody>
+                </table>
+                <div class="border border-black p-2 min-h-[100px] mb-8 text-sm"><span class="font-semibold">Catatan / Tindakan Perbaikan:</span></div>
+                <table class="w-full text-center text-sm print-table">
+                    <tr><td class="w-1/3 p-2 font-semibold bg-gray-50">Dibuat Oleh (Kalibrator)</td><td class="w-1/3 p-2 font-semibold bg-gray-50">Diperiksa Oleh (QC SPV)</td><td class="w-1/3 p-2 font-semibold bg-gray-50">Tgl Pelaksanaan Aktual</td></tr>
+                    <tr><td class="h-24 align-bottom p-2">( ................................... )</td><td class="h-24 align-bottom p-2">( ................................... )</td><td class="h-24 align-middle p-2 text-lg font-bold">___ / ___ / 20___</td></tr>
+                </table>
+                <div class="mt-4 text-xs italic text-gray-600">* Formulir dikembalikan ke Admin PPC/QC maks 1x24 jam setelah pelaksanaan.</div>
+            </div>`;
+        }
+
+        function printSingleAlertForm(index) {
+            let itemData = window.currentAlertData[index];
+            if (!itemData) return; document.getElementById('print-area').innerHTML = generateFormTemplate(itemData); window.print();
+        }
+
+        function printBulkAlertForms() {
+            if (!window.currentAlertData || window.currentAlertData.length === 0) return;
+            document.getElementById('print-area').innerHTML = window.currentAlertData.map(item => generateFormTemplate(item)).join(''); window.print();
+        }
+
+        document.addEventListener("DOMContentLoaded", () => { switchView('dashboard'); });
+    </script>
+</body>
+</html>
