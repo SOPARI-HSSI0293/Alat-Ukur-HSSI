@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sistem Kalibrasi QC — PT. HSSI</title>
@@ -271,13 +276,18 @@
                 </div>
 
                 <div id="view-master" class="view-section">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px; align-items: center;">
-                        <div style="position: relative; width: 300px;">
-                            <i class="fas fa-search" style="position: absolute; left: 14px; top: 12px; color: var(--text-dim);"></i>
-                            <input type="text" id="search-master" class="form-control" style="padding-left: 38px;" placeholder="Cari No Alat / Nama..." onkeyup="filterTable('search-master', 'tbody-master')">
-                        </div>
-                        <button onclick="loadMaster()" class="btn btn-outline"><i class="fas fa-sync-alt"></i></button>
-                    </div>
+<div style="display: flex; justify-content: space-between; margin-bottom: 20px; align-items: center;">
+    <div style="position: relative; width: 300px;">
+        <i class="fas fa-search" style="position: absolute; left: 14px; top: 12px; color: var(--text-dim);"></i>
+        <input type="text" id="search-master" class="form-control" style="padding-left: 38px;" placeholder="Cari No Alat / Nama..." onkeyup="filterTable('search-master', 'tbody-master')">
+    </div>
+    <div style="display: flex; gap: 8px;">
+        <button onclick="exportExcelMaster()" class="btn" style="background: var(--green); color: white; box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);">
+            <i class="fas fa-file-excel"></i> Export Excel
+        </button>
+        <button onclick="loadMaster()" class="btn btn-outline" title="Refresh Data"><i class="fas fa-sync-alt"></i></button>
+    </div>
+</div>
                     <div class="table-card">
                         <div style="overflow-x: auto; max-height: 70vh;">
                             <table class="data-table" style="position: relative;">
@@ -1817,6 +1827,37 @@ function getTemplateSigmat(d) {
                 window.print(); 
             }, 300);
         }
+// ============================================================
+// FUNGSI EXPORT EXCEL
+// ============================================================
+function exportExcelMaster() {
+    // 1. Temukan elemen tabel Master Data
+    let table = document.querySelector("#view-master .data-table");
+    
+    if(!table) {
+        showToast("Tabel tidak ditemukan", "error");
+        return;
+    }
+
+    try {
+        // 2. Konversi tabel HTML menjadi format buku kerja Excel (Workbook)
+        let wb = XLSX.utils.table_to_book(table, { sheet: "Master Data Alat" });
+        
+        // 3. Buat format nama file dengan tanggal hari ini (Format: YYYY-MM-DD)
+        let today = new Date();
+        let dateStr = today.toISOString().split('T')[0];
+        let fileName = `Master_Data_Alat_QC_${dateStr}.xlsx`;
+        
+        // 4. Proses unduh file
+        XLSX.writeFile(wb, fileName);
+        showToast("Berhasil mengekspor data ke Excel!", "success");
+        
+    } catch (error) {
+        console.error(error);
+        showToast("Gagal mengekspor data", "error");
+    }
+}
+
 
         window.addEventListener('DOMContentLoaded', () => { switchView('dashboard', document.querySelector('.nav-item.active')); });
     </script>
