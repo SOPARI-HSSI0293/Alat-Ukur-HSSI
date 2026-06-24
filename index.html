@@ -120,7 +120,11 @@
            PRINT ENGINE CSS (ISO TEMPLATE FORMAT)
            ========================================== */
         #print-area { display: none; }
+        
         @media print {
+            /* PERBAIKAN CSS PRINT DISINI */
+            html, body { height: auto !important; overflow: visible !important; }
+            
             .no-print, .app-container, .toast-container { display: none !important; }
             #print-area { display: block !important; width: 100%; background: white; }
             @page { size: A4 portrait; margin: 12mm; }
@@ -1794,13 +1798,24 @@ function getTemplateSigmat(d) {
                     </div>`;
         }
 
-        function printSingleAlert(idx) { let d = currentAlertData[idx]; if(!d) return; document.getElementById('print-area').innerHTML = getFormTemplate(d); window.print(); }
+        // PERBAIKAN FUNGSI PRINT JS DISINI
+        function printSingleAlert(idx) { 
+            let d = currentAlertData[idx]; 
+            if(!d) return; 
+            document.getElementById('print-area').innerHTML = getFormTemplate(d); 
+            
+            setTimeout(() => {
+                window.print(); 
+            }, 200);
+        }
         
         function printBulkAlertForms() { 
             if(!currentAlertData.length) return; 
-            // Menggabungkan semua HTML cetakan ke dalam satu render untuk dicetak massal
             document.getElementById('print-area').innerHTML = currentAlertData.map(d => getFormTemplate(d)).join(''); 
-            window.print(); 
+            
+            setTimeout(() => {
+                window.print(); 
+            }, 300);
         }
 
         window.addEventListener('DOMContentLoaded', () => { switchView('dashboard', document.querySelector('.nav-item.active')); });
