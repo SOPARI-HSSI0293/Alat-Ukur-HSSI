@@ -605,14 +605,28 @@
 
         function resetFileDisplay() { document.getElementById('inp-file').value = ""; selectedFileBase64 = null; selectedFileName = ""; document.getElementById('file-name-display').innerHTML = "Belum ada file dipilih"; }
 
-        async function submitUpdateForm(e) {
-            e.preventDefault(); toggleLoader(true);
-            let payload = { nomorAlat: document.getElementById('inp-no-alat').value.trim().toUpperCase(), tglEksekusi: document.getElementById('inp-tgl').value, judgement: document.getElementById('inp-judgement').value, picKalibrasi: document.getElementById('inp-pic').value, fileData: selectedFileBase64, fileName: selectedFileName };
-            let res = await fetchAPI("updateKalibrasi", payload);
-            toggleLoader(false);
-            if (res.status === "success") { showToast(res.message, "success"); document.getElementById('form-update').reset(); resetFileDisplay(); } 
-            else { showToast("Gagal diproses", "error"); }
-        }
+async function submitUpdateForm(e) {
+    e.preventDefault(); toggleLoader(true);
+    let payload = {
+        nomorAlat: document.getElementById('inp-no-alat').value.trim().toUpperCase(),
+        tglEksekusi: document.getElementById('inp-tgl').value,
+        judgement: document.getElementById('inp-judgement').value,
+        picKalibrasi: document.getElementById('inp-pic').value,
+        fileData: selectedFileBase64,
+        fileName: selectedFileName
+    };
+    let res = await fetchAPI("updateKalibrasi", payload);
+    toggleLoader(false);
+
+    if (res.status === "success") {
+        showToast(res.message, "success");
+        document.getElementById('form-update').reset();
+        resetFileDisplay();
+    } else {
+        // Modifikasi: Menarik dan menampilkan pesan error spesifik dari Backend
+        showToast("Gagal: " + (res.message || "Kesalahan komunikasi sistem"), "error");
+    }
+}
 
         function startQrScanner() {
             document.getElementById('qr-reader-container').classList.remove('hidden'); document.getElementById('cek-result-container').innerHTML = '';
