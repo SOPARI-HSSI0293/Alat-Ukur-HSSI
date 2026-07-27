@@ -528,8 +528,11 @@
             document.getElementById('tbody-dashboard').innerHTML = `<tr><td colspan="5" class="text-center text-slate-400 py-6"><i class="fas fa-circle-notch fa-spin mr-2"></i> Mengompilasi...</td></tr>`;
             let res = await fetchAPI("getDashboard");
             if (res.status === "success") {
-                document.getElementById('stat-total').innerText = res.data.total; document.getElementById('stat-valid').innerText = res.data.valid;
-                document.getElementById('stat-warning').innerText = res.data.warning + res.data.overdue; document.getElementById('stat-broken').innerText = res.data.broken;
+                document.getElementById('stat-total').innerText = res.data.total; 
+                document.getElementById('stat-valid').innerText = res.data.valid;
+                document.getElementById('stat-warning').innerText = res.data.warning; // Dipisah hanya untuk Warning
+                document.getElementById('stat-overdue').innerText = res.data.overdue; // ID baru untuk Overdue
+                
                 let html = "";
                 if(res.data.toolSummary.length === 0) html = `<tr><td colspan="5" class="text-center text-slate-400">Data kosong</td></tr>`;
                 res.data.toolSummary.forEach(row => {
